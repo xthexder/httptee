@@ -83,8 +83,8 @@ func Handle(conn *net.TCPConn) {
 			if len(linesa) > 0 && len(linesb) > 0 {
 				sort.Strings(linesa[1:])
 				sort.Strings(linesb[1:])
-				respa := strings.Join(linesa[1:], "\r\n")
-				respb := strings.Join(linesb[1:], "\r\n")
+				respa := strings.Join(linesa[1:], "\r\n") + "\r\n"
+				respb := strings.Join(linesb[1:], "\r\n") + "\r\n"
 				differ := diffmatchpatch.New()
 				charsa, charsb, fulltext := differ.DiffLinesToChars(respa, respb)
 				diff := differ.DiffMain(charsa, charsb, false)
@@ -108,10 +108,13 @@ func Handle(conn *net.TCPConn) {
 	}()
 
 	if connb != nil {
-		go io.Copy(connb, conn)
+		reader1 := io.TeeReader(conn, request)
+		reader2 := io.TeeReader(reader1, connb)
+		io.Copy(conna, reader2)
+	} else {
+		reader := io.TeeReader(conn, request)
+		io.Copy(conna, reader)
 	}
-	reader := io.TeeReader(conn, request)
-	io.Copy(conna, reader)
 }
 
 func main() {
